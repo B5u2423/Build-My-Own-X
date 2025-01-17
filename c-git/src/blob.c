@@ -2,6 +2,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <errno.h>
 #include "zlib.h"
 #include "blob.h"
 
@@ -49,7 +50,7 @@ int cat_file (FILE *source) {
             assert(ret != Z_STREAM_ERROR);
             switch (ret) {
                 case Z_NEED_DICT:
-                    ret = Z_DATA_ERROR;
+                    return Z_DATA_ERROR;
                 case Z_DATA_ERROR:
                 case Z_MEM_ERROR:
                     (void)inflateEnd(&stream);
@@ -68,19 +69,53 @@ int cat_file (FILE *source) {
 
 }
 
-void hash_object(FILE *source, FILE *dest) {
+void hash_object(FILE *source) {
     // Get content size to allocate heap
     fseek(source, 0, SEEK_END);
-    unsigned long source_size = ftell(source);
+    unsigned long src_size = ftell(source);
     fseek(source, 0, SEEK_SET);
 
     // printf("%ld\n", source_size);
 
-    unsigned char *source_content = malloc(sizeof(unsigned char) * source_size);
-    fread((void *)source_content, 1, (size_t) source_size, source);
+    unsigned long long bufsize = CHUNK;
+    char *blob_content = malloc(sizeof(char) * bufsize);
+    char *src_content = malloc(sizeof(char) * src_size);
+    
+    // Append header
+    sprintf(blob_content, "blob %ld", src_size);
+    size_t header_len = strlen(blob_content); // Account for null byte
+    blob_content[header_len++] = '\0';
+    while (src_size > (bufsize - header_len)) { // Realloc if not enough
+        bufsize *= 2;
+        blob_content = realloc(blob_content, bufsize);
+    }
+
+    // Read source file content
+    fread((void *)src_content, 1, (size_t) src_size, source);
+
+    // Append to blob content
+    strncat(blob_content + header_len, src_content, src_size + 1); // Null byte
 
     // printf("%s\n", source_content);
+    // for (int i = 0; i < 100; i++) {
+    //     if (dest_blob_content[i] == '\0') {
+    //         printf("\\0");
+    //         continue;
+    //     }
+    //     printf("%c", dest_blob_content[i]);
+    // }
 
-    
-    free(source_content);
+    // Zlib compress
+
+    // Hash and get the dest file path
+    // char *full_path= NULL;
+    // FILE *blob_dest = fopen(full_path, "wb");
+    // if (blob_dest == NULL) {
+    //     fprintf(stderr, "Cannot open file %s: %s\n", full_path, strerror(errno));
+    //     exit(1);
+    // }
+        
+    // fclose(blob_dest);
+    free(blob_content);
+    free(src_content);
 }

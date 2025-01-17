@@ -1,2 +1,7 @@
+# Aux directories
 bin/
 obj/
+
+# IDE settings
+.vscode/
+.idea/
