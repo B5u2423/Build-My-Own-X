@@ -20,7 +20,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf $(OBJ_DIR) $(BIN_DIR)
+	rm -rf $(OBJ_DIR) $(BIN_DIR)/*
 
 rebuild: clean all
 

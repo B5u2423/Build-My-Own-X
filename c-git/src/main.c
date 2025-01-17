@@ -59,14 +59,22 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
         char *full_path= NULL;
-        FILE *blob_dest = NULL;
-        blob_dest = fopen(full_path, "wb");
-        if (blob_dest == NULL) {
-            perror("Cannot open file");
+        printf("%s\n", argv[3]);
+        FILE *blob_dest = fopen(full_path, "wb");
+        // if (blob_dest == NULL) {
+        //     fprintf(stderr, "Cannot open file %s: %s\n", full_path, strerror(errno));
+        //     exit(1);
+        // }
+        FILE *source = fopen(argv[3], "rb");
+        if (source == NULL) {
+            fprintf(stderr, "Cannot open file %s: %s\n", argv[3], strerror(errno));
             exit(1);
         }
 
+        hash_object(source, blob_dest);
+
         fclose(blob_dest);
+        fclose(source);
     } else {
         fprintf(stderr, "Unknown command %s\n", command);
         return 1;

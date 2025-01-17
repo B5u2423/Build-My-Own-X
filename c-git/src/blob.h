@@ -7,5 +7,6 @@
 
 void get_file_path (char **full_path, const char* hash);
 int cat_file (FILE *source);
+void hash_object(FILE *source, FILE *dest);
 
 #endif

@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <string.h>
-#include "zlib.h"
 #include <assert.h>
+#include <stdlib.h>
+#include "zlib.h"
 #include "blob.h"
 
 void get_file_path (char **full_path, const char* hash) {
@@ -67,6 +68,19 @@ int cat_file (FILE *source) {
 
 }
 
-void hash_object(void) {
+void hash_object(FILE *source, FILE *dest) {
+    // Get content size to allocate heap
+    fseek(source, 0, SEEK_END);
+    unsigned long source_size = ftell(source);
+    fseek(source, 0, SEEK_SET);
 
+    // printf("%ld\n", source_size);
+
+    unsigned char *source_content = malloc(sizeof(unsigned char) * source_size);
+    fread((void *)source_content, 1, (size_t) source_size, source);
+
+    // printf("%s\n", source_content);
+
+    
+    free(source_content);
 }
