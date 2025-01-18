@@ -39,11 +39,12 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Usage: ./my-git cat-file -p <object>\n");
             exit(1);
         }
-        char *full_path = malloc(sizeof(char) * (SHA_LEN + 2 + strlen(OBJ_DIR)));
-        FILE *blob_file = NULL;
+        size_t full_path_size = sizeof(char) * (SHA_DIGEST_STRING_LEN + 2 + strlen(OBJ_DIR));
+        char *full_path = malloc(full_path_size);
+        memset(full_path, 0, full_path_size);
         
         get_file_path(&full_path, argv[3]);
-        blob_file = fopen(full_path, "rb");
+        FILE *blob_file = fopen(full_path, "rb");
         if (blob_file == NULL) {
             perror("Cannot open file");
             exit(1);

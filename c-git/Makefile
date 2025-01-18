@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -g
-LDFLAGS = -lz
+LDFLAGS = -lz -lssl -lcrypto
 
 SRC_DIR = src
 OBJ_DIR = obj
@@ -20,7 +20,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf $(OBJ_DIR) $(BIN_DIR)/*
+	rm -rdf $(OBJ_DIR) $(BIN_DIR)
 
 rebuild: clean all
 
