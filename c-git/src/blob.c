@@ -12,63 +12,41 @@ void get_file_path (char **full_path, const char* hash) {
 
 int cat_file (FILE *source) {
     // Zlib decompressed the blob file
-    int ret;
-    z_stream stream;
-    unsigned char in[CHUNK];
-    unsigned char out[CHUNK];
+    size_t compressed_data_len = get_content_len(source) + 1;
+    size_t out_buf_size = compressed_data_len * 3;
+   
+    unsigned char in[compressed_data_len];
+    unsigned char *out = malloc(out_buf_size);
 
-    stream.zalloc = NULL;
-    stream.zfree = NULL;
-    stream.opaque = Z_NULL;
-    stream.avail_in = 0;
-    stream.next_in = Z_NULL;
-
-    ret = inflateInit(&stream);
-    if (ret != Z_OK) {
-        fprintf(stderr, "Cannot decompressed file");
-        return ret;
+    fread(&in, 1, compressed_data_len, source);
+    
+    int ret = uncompress(out, (uLong *)&out_buf_size, (const unsigned char *)in, (uLong)compressed_data_len);
+    // Keep increaseing the buffer size 
+    while (ret == Z_BUF_ERROR) {
+        out_buf_size *= 3;
+        out = realloc(out, out_buf_size);
+        ret = uncompress(out, (uLong *)&out_buf_size, (const unsigned char *)in, (uLong)compressed_data_len);
     }
 
-    do {
-        stream.avail_in = fread(in, 1, CHUNK, source);
-        if(ferror(source)) {
-            (void)inflateEnd(&stream);
-            return Z_ERRNO;
-        }
-        if (stream.avail_in == 0) break;
-        stream.next_in = in;
-
-        do {
-            stream.avail_out = CHUNK;
-            stream.next_out = out;
-            ret = inflate(&stream, Z_NO_FLUSH);
-            assert(ret != Z_STREAM_ERROR);
-            switch (ret) {
-                case Z_NEED_DICT:
-                    return Z_DATA_ERROR;
-                case Z_DATA_ERROR:
-                case Z_MEM_ERROR:
-                    (void)inflateEnd(&stream);
-                    return ret;
-            }
-        } while (stream.avail_out == 0);
-
-    } while (ret != Z_STREAM_END);
-    (void)inflateEnd(&stream);
+    if (ret != Z_OK) {
+        fprintf(stderr, "Uncompress error. Code %d\n", ret);
+        return ret;
+    }
 
     // blob {content_byte_size}\0{content}
     // Extract the content string    
     char *content = strchr((const char *)out, '\0') + 1;
+    if (content == NULL) return 1;
+    
     printf("%s", content);
-    return 0;
 
+    free(out);
+    return 0;
 }
 
 int hash_object(FILE *source) {
     // Get content size to allocate heap
-    fseek(source, 0, SEEK_END);
-    size_t src_len = ftell(source);
-    fseek(source, 0, SEEK_SET);
+    size_t src_len = get_content_len(source);
 
     unsigned long long bufsize = CHUNK;
     size_t blob_content_buf_size = sizeof(char) * bufsize; 
@@ -135,7 +113,7 @@ int hash_object(FILE *source) {
 
     int ret = compress(compressed_data, &compressed_len, (const unsigned char *)blob_content_buf, blob_len);
     if (ret != Z_OK) {
-        fprintf(stderr, "Compress error. Code %d", ret);
+        fprintf(stderr, "Compress error. Code %d\n", ret);
         return 1;
     }
 
@@ -148,4 +126,11 @@ int hash_object(FILE *source) {
     free(full_path);
 
     return 0;
+}
+
+size_t get_content_len (FILE *fp) {
+    fseek(fp, 0, SEEK_END);
+    size_t ret = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    return ret;
 }

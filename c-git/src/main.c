@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
             perror("Cannot open file");
             exit(1);
         }
-        // printf("%s", full_path); // log
+        
         cat_file(blob_file);
 
         free(full_path);
@@ -59,8 +59,6 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Usage: ./my-git hash-object -w <file>\n");
             exit(1);
         }
-        // printf("%s\n", argv[3]);
-        
         FILE *source = fopen(argv[3], "rb");
         if (source == NULL) {
             fprintf(stderr, "Cannot open file %s: %s\n", argv[3], strerror(errno));
