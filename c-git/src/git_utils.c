@@ -1,19 +1,40 @@
 #include "zlib.h"
-#include "blob.h"
+#include "git_utils.h"
 
-void get_file_path (char **full_path, const char* hash) {
+/***********************
+ * Utility
+ ***********************/
+
+char *get_file_path (const char* hash) {
     // Get the file path from the hash
     char file[SHA_DIGEST_STRING_LEN + 1];
     file[SHA_DIGEST_STRING_LEN] = '\0';
+
+    size_t full_path_size = sizeof(char) * (SHA_DIGEST_STRING_LEN + 2 + strlen(OBJ_DIR));
+    char *full_path = malloc(full_path_size);
+    memset(full_path, 0, full_path_size);
     
     strncpy(file, hash, strlen(hash));
-    sprintf(*full_path, "%s/%.2s/%s", OBJ_DIR, hash, file + 2);
+    sprintf(full_path, "%s/%.2s/%s", OBJ_DIR, hash, file + 2);
+
+    return full_path;
 }
+
+size_t get_content_len (FILE *fp) {
+    fseek(fp, 0, SEEK_END);
+    size_t ret = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    return ret;
+}
+
+/***********************
+ * Blob object related
+ ***********************/
 
 int cat_file (FILE *source) {
     // Zlib decompressed the blob file
     size_t compressed_data_len = get_content_len(source) + 1;
-    size_t out_buf_size = compressed_data_len * 3;
+    size_t out_buf_size = CHUNK;
    
     unsigned char in[compressed_data_len];
     unsigned char *out = malloc(out_buf_size);
@@ -128,9 +149,6 @@ int hash_object(FILE *source) {
     return 0;
 }
 
-size_t get_content_len (FILE *fp) {
-    fseek(fp, 0, SEEK_END);
-    size_t ret = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-    return ret;
-}
+/***********************
+ * Tree object related
+ ***********************/

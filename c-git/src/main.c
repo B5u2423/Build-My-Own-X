@@ -3,7 +3,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include "blob.h"
+#include "git_utils.h"
 
 int main(int argc, char *argv[]) {
     // Disable output buffering
@@ -39,11 +39,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Usage: ./my-git cat-file -p <object>\n");
             exit(1);
         }
-        size_t full_path_size = sizeof(char) * (SHA_DIGEST_STRING_LEN + 2 + strlen(OBJ_DIR));
-        char *full_path = malloc(full_path_size);
-        memset(full_path, 0, full_path_size);
-        
-        get_file_path(&full_path, argv[3]);
+        char *full_path = get_file_path(argv[3]);
         FILE *blob_file = fopen(full_path, "rb");
         if (blob_file == NULL) {
             perror("Cannot open file");
@@ -68,6 +64,13 @@ int main(int argc, char *argv[]) {
         hash_object(source);
 
         fclose(source);
+    } else if (strcmp(command, "ls-tree") == 0) {
+        if (argv[2]  == NULL) {
+            fprintf(stderr, "Usage: ./my-git ls-tree <hash>\n");
+            exit(1);
+        }
+
+
     } else {
         fprintf(stderr, "Unknown command %s\n", command);
         return 1;

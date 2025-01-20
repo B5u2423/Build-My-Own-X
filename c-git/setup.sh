@@ -14,3 +14,18 @@ file_name="newfile.txt"
 echo 'Make new file for hash-object'
 echo 'this is a test file' > "$file_name" 
 echo "Content written to $file_name"
+
+echo '----------------------------------'
+echo "Writing tree"
+
+echo 'file1' > file1.txt
+echo 'file2' > file2.txt
+
+# Sub-tree ~ directory
+mkdir dir1
+mkdir dir2
+echo 'dummy' > dir1/dumfile.txt # Occupy the directory to be included in the tree
+echo 'dummy' > dir2/dumfile.txt
+
+git add .
+git write-tree
