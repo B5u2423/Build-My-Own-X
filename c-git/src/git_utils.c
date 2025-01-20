@@ -52,6 +52,49 @@ unsigned char *uncompress_zlib_object (FILE *source) {
     return out;
 }
 
+/**
+ * Idk why it worked but wow it works.
+ */
+void parse_tree_items (char *content_ptr, size_t content_len) {
+    char mode_str[MODE_LEN];
+    char name[1024];
+    unsigned char hash[SHA_DIGEST_LENGTH + 1];
+
+    char *substr_pointer = content_ptr;
+    size_t bytes_read = 0;
+    do {
+        size_t header_len = strlen(substr_pointer);
+
+        size_t mode_len = (substr_pointer[0] == '4') ? 6 : 7;
+        strncpy(mode_str, substr_pointer, mode_len);
+        long mode = atol(mode_str);
+
+        if (mode == 40000) {
+            printf("%06ld tree ", mode);
+        } else if (mode == 100644 || mode == 100755) {
+            printf("%06ld blob ", mode);
+        }
+
+        substr_pointer += mode_len;
+        bytes_read += mode_len;
+        size_t name_len = header_len - mode_len;
+        strncpy(name, substr_pointer, name_len);
+        name[name_len] = '\0';
+
+        substr_pointer += name_len + 1;
+        bytes_read += name_len + 1;
+        memcpy(hash, substr_pointer, SHA_DIGEST_LENGTH);
+        hash[SHA_DIGEST_LENGTH] = '\0';
+        for (int i = 0; i < SHA_DIGEST_LENGTH; i++) {
+            printf("%02x", hash[i]);
+        }
+        printf("\t%s\n", name);
+
+        substr_pointer += SHA_DIGEST_LENGTH;
+        bytes_read += SHA_DIGEST_LENGTH;
+    } while (bytes_read < content_len);    
+}
+
 /***********************
  * Blob object related
  ***********************/
@@ -184,9 +227,7 @@ void ls_tree (char *file_path) {
 
     // find content len
     size_t content_len = atol(strchr((const char *)uncompressed_data, ' ') + 1); //null byte
-    char *content_ptr = strchr((const char *)uncompressed_data, '\0');
+    char *content_ptr = strchr((const char *)uncompressed_data, '\0') + 1;
 
-    for (size_t i = 0; i < content_len; i++) {
-        if(content_ptr[i] == ' ') content_ptr[i] = '\0';
-    }
+    parse_tree_items(content_ptr, content_len);
 }
