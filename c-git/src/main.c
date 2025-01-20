@@ -40,16 +40,8 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
         char *full_path = get_file_path(argv[3]);
-        FILE *blob_file = fopen(full_path, "rb");
-        if (blob_file == NULL) {
-            perror("Cannot open file");
-            exit(1);
-        }
-        
-        cat_file(blob_file);
-
+        cat_file(full_path);
         free(full_path);
-        fclose(blob_file);
     } else if (strcmp(command, "hash-object") == 0) {
         if (strcmp(argv[2], "-w") != 0 || argv[3] == NULL) {
             fprintf(stderr, "Usage: ./my-git hash-object -w <file>\n");
@@ -69,8 +61,9 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Usage: ./my-git ls-tree <hash>\n");
             exit(1);
         }
-
-
+        char *full_path = get_file_path(argv[2]);
+        ls_tree(full_path);
+        free(full_path);
     } else {
         fprintf(stderr, "Unknown command %s\n", command);
         return 1;

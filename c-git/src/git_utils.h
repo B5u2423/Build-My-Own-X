@@ -16,7 +16,8 @@
 
 char *get_file_path (const char* hash);
 size_t get_content_len (FILE *fp);
-int cat_file (FILE *source);
+void cat_file (char *file_path);
 int hash_object(FILE *source);
+void ls_tree (char *file_path);
 
 #endif

@@ -24,8 +24,8 @@ echo 'file2' > file2.txt
 # Sub-tree ~ directory
 mkdir dir1
 mkdir dir2
-echo 'dummy' > dir1/dumfile.txt # Occupy the directory to be included in the tree
-echo 'dummy' > dir2/dumfile.txt
+echo 'dummy1' > dir1/dumfile2.txt # Occupy the directory to be included in the tree
+echo 'dummy2' > dir2/dumfile1.txt
 
 git add .
 git write-tree

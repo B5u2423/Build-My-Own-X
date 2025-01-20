@@ -27,12 +27,7 @@ size_t get_content_len (FILE *fp) {
     return ret;
 }
 
-/***********************
- * Blob object related
- ***********************/
-
-int cat_file (FILE *source) {
-    // Zlib decompressed the blob file
+unsigned char *uncompress_zlib_object (FILE *source) {
     size_t compressed_data_len = get_content_len(source) + 1;
     size_t out_buf_size = CHUNK;
    
@@ -51,18 +46,38 @@ int cat_file (FILE *source) {
 
     if (ret != Z_OK) {
         fprintf(stderr, "Uncompress error. Code %d\n", ret);
-        return ret;
+        return NULL;
     }
 
+    return out;
+}
+
+/***********************
+ * Blob object related
+ ***********************/
+
+void cat_file (char *file_path) {
+    // Zlib decompressed the blob file
+    FILE *blob_file = fopen(file_path, "rb");
+    if (blob_file == NULL) {
+        perror("Cannot open file");
+        exit(1);
+    }
+
+    unsigned char *uncompressed_data = uncompress_zlib_object(blob_file);
+
     // blob {content_byte_size}\0{content}
+    if (strncmp((char *)uncompressed_data, "blob", 4) != 0) {
+        fprintf(stderr, "fatal: not a blob object\n");
+        exit(1);
+    }
+
     // Extract the content string    
-    char *content = strchr((const char *)out, '\0') + 1;
-    if (content == NULL) return 1;
-    
+    char *content = strchr((const char *)uncompressed_data, '\0') + 1;    
     printf("%s", content);
 
-    free(out);
-    return 0;
+    free(uncompressed_data);
+    fclose(blob_file);
 }
 
 int hash_object(FILE *source) {
@@ -152,3 +167,26 @@ int hash_object(FILE *source) {
 /***********************
  * Tree object related
  ***********************/
+void ls_tree (char *file_path) {
+    FILE *blob_file = fopen(file_path, "rb");
+    if (blob_file == NULL) {
+        perror("Cannot open file");
+        exit(1);
+    }
+
+    unsigned char *uncompressed_data = uncompress_zlib_object(blob_file);
+
+    // tree {content_byte_size}\0{tree_items}
+    if (strncmp((char *)uncompressed_data, "tree", 4) != 0) {
+        fprintf(stderr, "fatal: not a tree object\n");
+        exit(1);
+    }
+
+    // find content len
+    size_t content_len = atol(strchr((const char *)uncompressed_data, ' ') + 1); //null byte
+    char *content_ptr = strchr((const char *)uncompressed_data, '\0');
+
+    for (size_t i = 0; i < content_len; i++) {
+        if(content_ptr[i] == ' ') content_ptr[i] = '\0';
+    }
+}
