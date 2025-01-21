@@ -55,7 +55,7 @@ unsigned char *uncompress_zlib_object (FILE *source) {
 /**
  * Idk why it worked but wow it works.
  */
-void parse_tree_items (char *content_ptr, size_t content_len) {
+void parse_n_print_tree_items (char *content_ptr, size_t content_len) {
     char mode_str[MODE_LEN];
     char name[1024];
     unsigned char hash[SHA_DIGEST_LENGTH + 1];
@@ -63,9 +63,13 @@ void parse_tree_items (char *content_ptr, size_t content_len) {
     char *substr_pointer = content_ptr;
     size_t bytes_read = 0;
     do {
+        // Headers: blob|tree {content_size}\0
         size_t header_len = strlen(substr_pointer);
 
-        size_t mode_len = (substr_pointer[0] == '4') ? 6 : 7;
+        // Parse the mode
+        // mode_len also include the space between mode and content len.
+        // eliminate the requirement of removing leading space for item name.
+        size_t mode_len = (substr_pointer[0] == '4') ? 6 : 7; 
         strncpy(mode_str, substr_pointer, mode_len);
         long mode = atol(mode_str);
 
@@ -75,12 +79,16 @@ void parse_tree_items (char *content_ptr, size_t content_len) {
             printf("%06ld blob ", mode);
         }
 
+        // Parse file/dir name
         substr_pointer += mode_len;
         bytes_read += mode_len;
+        // name_len is arbitrary so it has be deduced from the 
+        // mode_len (fixed size) and the header_len
         size_t name_len = header_len - mode_len;
         strncpy(name, substr_pointer, name_len);
         name[name_len] = '\0';
 
+        // Parse sha string
         substr_pointer += name_len + 1;
         bytes_read += name_len + 1;
         memcpy(hash, substr_pointer, SHA_DIGEST_LENGTH);
@@ -229,5 +237,5 @@ void ls_tree (char *file_path) {
     size_t content_len = atol(strchr((const char *)uncompressed_data, ' ') + 1); //null byte
     char *content_ptr = strchr((const char *)uncompressed_data, '\0') + 1;
 
-    parse_tree_items(content_ptr, content_len);
+    parse_n_print_tree_items(content_ptr, content_len);
 }
