@@ -17,8 +17,12 @@
 
 char *get_file_path (const char* hash);
 size_t get_content_len (FILE *fp);
+void sha2hex (unsigned char *digest);
+
 void cat_file (char *file_path);
-int hash_object(FILE *source);
+unsigned char *hash_object(char *file_path);
+
 void ls_tree (char *file_path);
+void write_tree (void);
 
 #endif
