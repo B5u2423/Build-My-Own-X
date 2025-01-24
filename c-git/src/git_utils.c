@@ -120,6 +120,50 @@ void sha2hex (unsigned char *digest) {
     putchar('\n');
 }
 
+unsigned char *sha2path (char *content_buf, size_t len, unsigned char *digest) {
+    size_t path_len = SHA_DIGEST_STRING_LEN + 3 + strlen(OBJ_DIR);
+    unsigned char *full_path = malloc(path_len);
+    if (full_path == NULL) {
+        fprintf(stderr, "error allocating memory in %s:%d\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    memset(full_path, 0, path_len);
+
+    SHA1((const unsigned char *)content_buf, len, digest);
+
+    int idx = snprintf((char *)full_path, path_len, "%s/%02x/", OBJ_DIR, digest[0]);
+    full_path[idx] = '\0';
+    mkdir((const char *)full_path, 0755);
+
+    for (int i = 0; i < SHA_DIGEST_LENGTH - 1; i++) {
+        snprintf((char *)(full_path + idx + i * 2), path_len, "%02x", digest[i + 1]);
+    }
+    full_path[path_len] = '\0';
+
+    return full_path;
+}
+
+void zlib_compress (unsigned char *full_path, size_t len, char *content_buf) {
+    FILE *blob_dest = fopen((const char *)full_path, "wb+");
+    if (blob_dest == NULL) {
+        fprintf(stderr, "Cannot open file %s: %s\n", full_path, strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+        
+    uLong compressed_len = compressBound(len);
+    unsigned char compressed_data[compressed_len];
+
+    int ret = compress(compressed_data, &compressed_len, (const unsigned char *)content_buf, len);
+    if (ret != Z_OK) {
+        fprintf(stderr, "Compress error. Code %d\n", ret);
+        exit(EXIT_FAILURE);
+    }
+
+    fwrite(compressed_data, 1, compressed_len, blob_dest);    
+
+    fclose(blob_dest);
+}
+
 /***********************
  * Blob object related
  ***********************/
@@ -193,6 +237,7 @@ unsigned char *hash_object(char *file_path) {
     while (src_len > (bufsize - header_len)) { // Realloc if not enough
         bufsize *= 2;
         blob_content_buf = realloc(blob_content_buf, bufsize);
+        memset(blob_content_buf + header_len, 0, bufsize - header_len);
     }
 
     // Read source file content
@@ -202,47 +247,12 @@ unsigned char *hash_object(char *file_path) {
     strncat(blob_content_buf + header_len, src_content, src_len + 1); // null byte
 
     // Hash and get the dest file path
-    size_t path_len = SHA_DIGEST_STRING_LEN + 3 + strlen(OBJ_DIR);
-    unsigned char *full_path = malloc(path_len);
-    if (full_path == NULL) {
-        fprintf(stderr, "error allocating memory in %s:%d\n", __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-    }
-    memset(full_path, 0, path_len);
-
     size_t blob_len = header_len + src_len;
-    SHA1((const unsigned char *)blob_content_buf, blob_len, digest);
 
-    int idx = snprintf((char *)full_path, path_len, "%s/%02x/", OBJ_DIR, digest[0]);
-    full_path[idx] = '\0';
-    mkdir((const char *)full_path, 0755);
+    unsigned char *full_path = sha2path(blob_content_buf, blob_len, digest);
+    zlib_compress(full_path, blob_len, blob_content_buf);
 
-    for (int i = 0; i < SHA_DIGEST_LENGTH - 1; i++) {
-        snprintf((char *)(full_path + idx + i * 2), path_len, "%02x", digest[i + 1]);
-    }
-    full_path[SHA_DIGEST_LENGTH] = '\0';
-
-    //-------------- Zlib compress --------------
-    FILE *blob_dest = fopen((const char *)full_path, "wb+");
-    if (blob_dest == NULL) {
-        fprintf(stderr, "Cannot open file %s: %s\n", full_path, strerror(errno));
-        return NULL;
-    }
-        
-    uLong compressed_len = compressBound(blob_len);
-    unsigned char compressed_data[compressed_len];
-
-    int ret = compress(compressed_data, &compressed_len, (const unsigned char *)blob_content_buf, blob_len);
-    if (ret != Z_OK) {
-        fprintf(stderr, "Compress error. Code %d\n", ret);
-        return NULL;
-    }
-
-    fwrite(compressed_data, 1, compressed_len, blob_dest);    
-
-    fclose(blob_dest);
     fclose(source);
-
     free(blob_content_buf);
     free(src_content);
     free(full_path);
@@ -282,13 +292,22 @@ void write_tree (void) {
         exit(EXIT_FAILURE);
     }
     struct dirent **namelist;
-
     int n = scandir(".", &namelist, NULL, alphasort);
     if (n < 0) {
         perror("scandir()");
         exit(EXIT_FAILURE);
     }
 
+    unsigned char *res_tree = malloc(CHUNK);
+    if (res_tree == NULL) {
+        fprintf(stderr, "error allocating memory in %s:%d\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    memset(res_tree, 0, CHUNK);
+
+    int bytes_written = 0, total_written = 0;
+    char *curr_pos;
+    curr_pos = (char *)res_tree;
     for (int i = 0; i < n; i++) {
         if (namelist[i]->d_type == DT_DIR) {
             if (
@@ -300,8 +319,21 @@ void write_tree (void) {
                 continue;
             }
         }
-        unsigned char *file_sha1 = hash_object(namelist[i]->d_name); 
-        printf("%s\t\t%s\n", namelist[i]->d_name, "file_sha1");
+        unsigned char *file_sha1 = hash_object(namelist[i]->d_name);
+
+        bytes_written = snprintf(curr_pos, CHUNK, "%d blob", 100644);
+        curr_pos[bytes_written++] = '\0';
+        total_written += bytes_written;
+        curr_pos += bytes_written;
+
+        bytes_written = snprintf(curr_pos, CHUNK, "%s ", namelist[i]->d_name);
+        total_written += bytes_written;
+        curr_pos += bytes_written;
+
+        memcpy(curr_pos, file_sha1, SHA_DIGEST_LENGTH);
+        total_written += SHA_DIGEST_LENGTH;
+        curr_pos += SHA_DIGEST_LENGTH;
+
         free(namelist[i]);
         free(file_sha1);
     }

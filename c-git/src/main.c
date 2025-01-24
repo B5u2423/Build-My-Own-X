@@ -49,12 +49,12 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Usage: ./my-git hash-object -w <file>\n");
             exit(EXIT_FAILURE);
         }
-        char *hash_buf = hash_object(argv[3]);
+        unsigned char *hash_buf = hash_object(argv[3]);
         if (hash_buf == NULL) {
             fprintf(stderr, "error hashing file %s\n", argv[3]);
             exit(EXIT_FAILURE);
         }
-        sha2hex(hash_buf);
+        sha2hex((unsigned char *)hash_buf);
         free(hash_buf);
     } else if (strcmp(command, "ls-tree") == 0) {
         if (argv[2]  == NULL) {
