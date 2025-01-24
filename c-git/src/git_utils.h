@@ -15,6 +15,11 @@
 #define SHA_DIGEST_STRING_LEN   SHA_DIGEST_LENGTH * 2
 #define MODE_LEN                6
 
+struct tree_item {
+    size_t size;
+    char name[512];
+};
+
 char *get_file_path (const char* hash);
 size_t get_content_len (FILE *fp);
 void sha2hex (unsigned char *digest);

@@ -138,7 +138,7 @@ unsigned char *sha2path (char *content_buf, size_t len, unsigned char *digest) {
     for (int i = 0; i < SHA_DIGEST_LENGTH - 1; i++) {
         snprintf((char *)(full_path + idx + i * 2), path_len, "%02x", digest[i + 1]);
     }
-    full_path[path_len] = '\0';
+    full_path[path_len - 1] = '\0';
 
     return full_path;
 }
@@ -298,17 +298,13 @@ void write_tree (void) {
         exit(EXIT_FAILURE);
     }
 
-    unsigned char *res_tree = malloc(CHUNK);
-    if (res_tree == NULL) {
-        fprintf(stderr, "error allocating memory in %s:%d\n", __FILE__, __LINE__);
-        exit(EXIT_FAILURE);
-    }
-    memset(res_tree, 0, CHUNK);
+    struct tree_item **itemlist = malloc(sizeof(struct tree_item *) * 1024);
+    int count = 0, bytes_written = 0;
 
-    int bytes_written = 0, total_written = 0;
     char *curr_pos;
-    curr_pos = (char *)res_tree;
+    size_t tree_obj_len = 0; 
     for (int i = 0; i < n; i++) {
+        int total_written = 0;
         if (namelist[i]->d_type == DT_DIR) {
             if (
                 strcmp(namelist[i]->d_name, ".") == 0 ||
@@ -320,7 +316,10 @@ void write_tree (void) {
             }
         }
         unsigned char *file_sha1 = hash_object(namelist[i]->d_name);
+        itemlist[count] = malloc(sizeof(struct tree_item));
+        memset(itemlist[count]->name, 0, 512);
 
+        curr_pos = itemlist[count]->name;
         bytes_written = snprintf(curr_pos, CHUNK, "%d blob", 100644);
         curr_pos[bytes_written++] = '\0';
         total_written += bytes_written;
@@ -333,11 +332,49 @@ void write_tree (void) {
         memcpy(curr_pos, file_sha1, SHA_DIGEST_LENGTH);
         total_written += SHA_DIGEST_LENGTH;
         curr_pos += SHA_DIGEST_LENGTH;
-
-        free(namelist[i]);
+        itemlist[count]->size = total_written;
+        count++;
+        tree_obj_len += total_written;
         free(file_sha1);
+        free(namelist[i]);
     }
-
     free(namelist);
+
+    unsigned char *res_tree = malloc(tree_obj_len * 1.2);
+    if (res_tree == NULL) {
+        fprintf(stderr, "error allocating memory in %s:%d\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    memset(res_tree, 0, tree_obj_len);
+    bytes_written = snprintf((char *)res_tree, tree_obj_len, "tree %ld", tree_obj_len);
+    res_tree[bytes_written++] ='\0';
+    memset(res_tree + bytes_written, 0, tree_obj_len - bytes_written);
+    curr_pos = (char *)res_tree + bytes_written;
+
+    for (int i = 0; i < count; i++) {
+        memcpy(curr_pos, itemlist[i]->name, itemlist[i]->size);
+        curr_pos += itemlist[i]->size;
+        free(itemlist[i]);
+    }
+    free(itemlist);
+
+    // for (size_t i = 0; i < tree_obj_len; i++) {
+    //     if (res_tree[i] == '\0') {
+    //         printf("\\0");
+    //     }
+    //     printf("%c", res_tree[i]);
+    // }
+    // putchar('\n');
+
+    unsigned char *digest = malloc(SHA_DIGEST_LENGTH);
+    if (digest == NULL) {
+        fprintf(stderr, "error allocating memory in %s:%d\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    unsigned char *full_path = sha2path(res_tree, tree_obj_len, digest);
+    zlib_compress(full_path, tree_obj_len, res_tree);
+
+    sha2hex(digest);
+    free(res_tree);
     closedir(dir_ptr);
 }

@@ -69,7 +69,6 @@ int main(int argc, char *argv[]) {
     } else {
         fprintf(stderr, "Unknown command %s\n", command);
         exit(EXIT_FAILURE);
-    }
-    
+    }    
     exit(EXIT_SUCCESS);
 }
