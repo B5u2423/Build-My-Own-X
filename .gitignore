@@ -1,3 +1,9 @@
+# Binary and no extension files
+*
+!*/
+!*.*
+*.out
+
 # Aux directories
 bin/
 obj/
@@ -6,8 +12,3 @@ obj/
 .vscode/
 .idea/
 
-# Default binary
-*
-!*/
-!*.*
-*.out
