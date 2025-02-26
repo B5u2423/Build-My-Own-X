@@ -5,3 +5,9 @@ obj/
 # IDE settings
 .vscode/
 .idea/
+
+# Default binary
+*
+!*/
+!*.*
+*.out
