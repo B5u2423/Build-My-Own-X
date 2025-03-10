@@ -7,6 +7,7 @@
 # Aux directories
 bin/
 obj/
+__pycache__
 
 # IDE settings
 .vscode/
